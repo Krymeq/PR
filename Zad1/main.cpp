@@ -5,16 +5,17 @@
 #include <vector>
 #include <string>
 
+typedef uint32_t u32;
 using namespace std;
 
 #pragma region Number filter method
-vector<int> find_primes_con1_seq(int n, int m) {
+vector<u32> find_primes_con1_seq(u32 n, u32 m) {
 	double tstart, tend;
 	tstart = omp_get_wtime();
 
-	vector<int> primes;
-	for (int i = n; i <= m; i++) {
-		int j = 2;
+	vector<u32> primes;
+	for (u32 i = n; i <= m; i++) {
+		u32 j = 2;
 		bool had_div = false;
 		while (j <= sqrt(i)) {
 			if (i % j == 0) {
@@ -31,11 +32,66 @@ vector<int> find_primes_con1_seq(int n, int m) {
 
 	return primes;
 }
-vector<int> find_primes_con1_par_ver1() {
+vector<u32> find_primes_con1_par_ver1(u32 n, u32 m) {
+	double tstart, tend;
+	tstart = omp_get_wtime();
+	vector<u32> primes;
+	omp_set_num_threads(8);
+	#pragma omp parallel
+	{
+		#pragma omp for
+		for (int i = n; i <= m; i++) {
+			u32 j = 2;
+			bool had_div = false;
+			while (j <= sqrt(i)) {
+				if (i % j == 0) {
+					had_div = true;
+					break;
+				}
+				j++;
+			}
+			# pragma omp critical
+			if (!had_div)primes.push_back(i);
+		}
 
+	
+	}
+	tend = omp_get_wtime();
+	printf("Con1 Par V1: %f seconds\n", ((double)(tend - tstart)));
+	return primes;
 }
-vector<int> find_primes_con1_par_ver2() {
+vector<u32> find_primes_con1_par_ver2(u32 n, u32 m) {
+	double tstart, tend;
+	tstart = omp_get_wtime();
+	vector<u32> primes;
+	omp_set_num_threads(8);
+	#pragma omp parallel
+	{
+	vector<u32> local_primes;
+	#pragma omp for
+		for (int i = n; i <= m; i++) {
+			u32 j = 2;
+			bool had_div = false;
+			while (j <= sqrt(i)) {
+				if (i % j == 0) {
+					had_div = true;
+					break;
+				}
+				j++;
+			}
+			if (!had_div)local_primes.push_back(i);
+		}
+		#pragma omp critical
+		{
+			for (int i = 0; i < local_primes.size(); i++) {
+				primes.push_back(local_primes[i]);
+			}
 
+		}
+	}
+	tend = omp_get_wtime();
+	printf("Con1 Par V2: %f seconds\n", ((double)(tend - tstart)));
+	return primes;
 }
 #pragma endregion
 
@@ -72,8 +128,14 @@ int main(int argc, char* argv[])
 		}
 	}
 	printf("Wartosc liczby PI wynosi %15.12f\n", pi);*/
+
+	u32 n = 2;
+	u32 m = 90000000;
 	
-	vector<int> primes = find_primes_con1_seq(2,3000000);
+	vector<u32> primes;
+	primes = find_primes_con1_seq(n, m);
+	primes = find_primes_con1_par_ver1(n, m);
+	primes = find_primes_con1_par_ver2(n, m);
 	
 	/*for (int i = 0; i < primes.size(); i++) {
 		printf("%d\n",primes[i]);
